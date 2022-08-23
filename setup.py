@@ -11,9 +11,9 @@ install_requires=['numpy>1.10', 'psutil', 'scipy>=0.17.0', 'numba>=0.54']
 dependency_links =[]
 
 
-
-#install_requires.append('dill')
-#dependency_links.append('git+https://github.com/uqfoundation/dill.git@master')
+if IS_WINDOWS:
+	install_requires.append('dill')
+	dependency_links.append('git+https://github.com/uqfoundation/dill.git@master')
 
 install_requires.append('pathos')
 dependency_links.append('git+https://github.com/uqfoundation/pathos.git@master')

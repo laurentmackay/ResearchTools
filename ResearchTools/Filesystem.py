@@ -1,12 +1,14 @@
 import fnmatch, os, re
 import numpy as np
 
-
-def get_filenames(path='.', pattern='*.pickle', min_timestamp=0, extend=None, include_path=False):
-    out = []
+def pattern_to_regex(pattern):
     pattern = fnmatch.translate(pattern)
     pattern = pattern.replace('.*', '(.*)')
-    regex = re.compile(pattern)
+    return re.compile(pattern)
+
+def get_filenames(path='.', pattern='*', min_timestamp=0, extend=None, include_path=False):
+    out = []
+    regex = pattern_to_regex(pattern)
     if extend is not None:
         filenames = [e[0] for e in extend]
     with os.scandir(path) as iter:
@@ -37,9 +39,7 @@ def get_creationtime(filename, path=os.getcwd()):
 
 def get_oldestfile(pattern, path=os.getcwd()):
     out = []
-    pattern = fnmatch.translate(pattern)
-    pattern = pattern.replace('.*', '(.*)')
-    regex = re.compile(pattern)
+    regex = pattern_to_regex(pattern)
     min_timestamp = np.inf
     with os.scandir(path) as iter:
         for entry in iter:
