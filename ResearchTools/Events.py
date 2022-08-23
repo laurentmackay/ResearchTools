@@ -1,5 +1,15 @@
-def EventExecutor(events):
+def TimeBasedEventExecutor(events):
+    '''Execute events after specific "times" have passed.
 
+    Args:
+        Events: List of 2- or 3- tuples. First item in each tuple is the time for each event, second item is the function to be executed for each event,
+             third item (optional) is a string to be printed after the event function is executed.
+
+    Returns:
+        wait_and_excute: Function that can be called with signature wait_and_execute(t, *args), where `t` is the current "time" and `*args` are any argument
+            to be passed to the event function. This function also have `extend` and `append` methods that allow for the event list to be grown.
+
+    '''
     def wait_and_execute(t, *args):
         fired=[]
         for evt in events: #iterate over events list and execute any fired events
