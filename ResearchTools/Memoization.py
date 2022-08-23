@@ -24,7 +24,12 @@ def code_filename():
 
 
 def signature_string(f=None, locals=None):
+    '''Returns a human-readable string describing the signature of a function call. All passed positional arguments are appear in the string, while only non-default keyword arguments are included.
 
+    Kwargs:
+        f : callable object, or `None`. If `None`, the calling function is used.
+        locals : dictionary of local values for the function call, or `None`. If `None`, the locals of the calling function is used.
+    '''
     if f is None:
         f = get_caller()
 
@@ -69,7 +74,7 @@ def signature_string(f=None, locals=None):
 
 
 def signature_lists(f):
-
+    '''Returns ths argument and keyword names of the function `f`.'''
     sig = inspect.signature(f)
 
     args = []

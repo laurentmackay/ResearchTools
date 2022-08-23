@@ -122,7 +122,6 @@ def triangle_areas_and_vectors(pos_side):
 @jit(nopython=True, cache=True)
 def triangle_area_vectors(pos_side):
     
-    # A_alpha = np.zeros((3,))
     inds=np.array([2,0,1])
     A_alpha = np.sum(np.cross(pos_side,pos_side[:,inds,:]), axis=1)/2
     
