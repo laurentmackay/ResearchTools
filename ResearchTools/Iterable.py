@@ -1,6 +1,10 @@
+from collections.abc import Iterable
+
 def first_item(iter):
     return iter.__iter__().__next__()
 
+def args_nd_shape(*args):
+    return tuple(len(v)  for v in args if isinstance(v, Iterable))
 
 def imin(iter):
     return min(range(len(iter)), key=iter.__getitem__)

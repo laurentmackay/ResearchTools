@@ -19,15 +19,16 @@ import numpy as np
 
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def euclidean_distance(A, B):
     #Euclidean distance from point A to B
 
-    dist = [(a - b)**2 for a, b in zip(A, B)]
-    dist = math.sqrt(sum(dist))
-    return dist
+    # dist = [(a - b)**2 for a, b in zip(A, B)]
+    # dist = math.sqrt(sum(dist))
+    d=B-A
+    return np.sqrt(np.sum(d*d))
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def unit_vector(A,B):
     # Calculate the unit vector from A to B
 
@@ -36,7 +37,7 @@ def unit_vector(A,B):
     return (B-A)/dist
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def unit_vector_and_dist(A, B):
     # Calculate the unit vector from A to B, and return the distance as well
 
@@ -53,12 +54,12 @@ def convex_hull_volume(pts):
     return ConvexHull(pts).volume
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def cross33(a,b):
     # cross product between two 3-vectors
     return np.array([a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]])
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def cross3Mat(a,b):
     #cross product between a vector and an Nx3 matrix
     out = np.zeros((b.shape))
@@ -69,7 +70,7 @@ def cross3Mat(a,b):
 
     return out
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def crossMatMat(a,b):
     # pair-wise cross products of two Nx3 matrices
     out = np.zeros((b.shape))
@@ -98,34 +99,36 @@ def sort_corners(corners, center_pos, pos_nodes):
     
     return corn2, corn_sort
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def triangle_area_and_vector(pos_side):
     
     A_alpha = triangle_area_vector(pos_side)
     return np.linalg.norm(A_alpha), A_alpha
     
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def triangle_area_vector(pos_side):
 
     inds=np.array([2,0,1])
     A_alpha = np.sum(crossMatMat(pos_side,pos_side[inds]),axis=0)/2
     return A_alpha
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True, inline='always')
 def triangle_areas_and_vectors(pos_side):
 
     A_alpha = triangle_area_vectors(pos_side)
     
     return np.array([np.linalg.norm(v) for v in A_alpha]), A_alpha
 
-@jit(nopython=True, cache=True)
-def triangle_area_vectors(pos_side):
+@jit(nopython=True, cache=True, inline='always')
+def triangle_area_vectors(pos_side) -> np.ndarray:
     
     inds=np.array([2,0,1])
-    A_alpha = np.sum(np.cross(pos_side,pos_side[:,inds,:]), axis=1)/2
+    A_alpha = 0.5*np.sum(np.cross(pos_side,pos_side[:,inds,:]), axis=1)
     
     return A_alpha
+
+
 
 
 

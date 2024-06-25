@@ -8,13 +8,13 @@ from pathos.pools import ThreadPool as ThreadPool
 
 import numpy as np
 
-from .Iterable import first_item
-from .Dict import dict_hash
-from .Memoization import function_savepath, check_function_cache, signature_lists, signature_string
+from .Iterable import args_nd_shape, first_item
+from .Dict import hash384, dict_product, dict_product_nd_shape
+from .Caching import cache_file, function_savedir,  signature_lists, signature_string
 
-def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=False, 
+def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle', overwrite=False, 
             pool=None, pre_process=None, pre_process_kw={}, pass_kw=False,
-            inpaint=None, cache=False, refresh=False, verbose=True):
+            inpaint=None, cache=False, refresh=False, verbose=True, dtype=None):
     """
     Perform a sweep of a function over all parameter and keyword combinations, or retrieve corresponding results from local storage.
 
@@ -59,11 +59,11 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
         return [a for a in args if isinstance(a, Iterable)]
 
     func = get_callables(*args)
-    params = tuple(product(*get_iterables(*args)))
+    par0 = get_iterables(*args)
+    params = tuple(product(*par0))
 
     if len(func) > 1:
-        for f in func:
-            sweep(f, params, savepath_prefix=savepath_prefix, extension=extension, overwrite=overwrite, pool=pool, pre_process=pre_process, inpaint=inpaint, cache=cache)
+        return [sweep(f, params, savepath_prefix=savepath_prefix, extension=extension, overwrite=overwrite, pool=pool, pre_process=pre_process, inpaint=inpaint, cache=cache) for f in func]
     elif len(func) < 1:
         raise TypeError('No function specified')
     else:
@@ -72,18 +72,29 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
     extension = extension.strip()
     if extension[0] != '.':
         extension = '.'+extension
-
+    kw0=kw
     if isinstance(kw, dict):
-        kw = [kw]
+        if expand_kw:
+            kw=dict_product(kw)
+        else:
+            kw = [kw]
 
-    basepath = os.path.join(savepath_prefix, function_savepath(func))
+    savepath = function_savedir(func)
+    basedir = os.path.join(savepath_prefix, savepath)
     results = None
     shape = (max(len(params), 1),  len(kw))
 
     if cache is not None and pre_process is not None:
         if cache == True:
-            pre_hash = dict_hash([*params, *kw])
-            results, cache = check_function_cache(pre_process, kw=pre_process_kw, load=not refresh, pre_hash=pre_hash)
+            filename  = hash384(pre_process_kw, pre_hash=hash384([*params, *kw, savepath]))
+
+            cache  = cache_file(pre_process, filename=filename, cache_dir='.cache')
+
+            if (not (refresh or overwrite)) and os.path.exists(cache):
+                    with open(cache, 'rb') as file:
+                        results = pickle.load(file)
+
+
 
     if results is None or not (results.shape == shape):
         results = np.array([[None]*shape[1]]*shape[0])
@@ -112,7 +123,7 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
             pars = (pars,)
         locals = {**{a: v for a, v in zip(par_names, pars)}, **kw[j]}
 
-        path = os.path.join(basepath, signature_string( f=func, locals=locals) + extension)
+        path = os.path.join(basedir, signature_string( f=func, locals=locals) + extension)
 
         savepaths[k] = path
         missing_file = not os.path.exists(path)
@@ -122,6 +133,9 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
             result = func(*pars, **kw[j])
             #save the result for later, if that makes sense
             if result is not None and not os.path.exists(path):
+                if  not os.path.exists(basedir):
+                    os.makedirs(basedir)
+
                 with open(path, 'wb') as file:
                     pickle.dump(result, file)
         else:
@@ -153,7 +167,8 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
         if results[i,j] is None:
             path = savepaths[k]
             file_exists = os.path.exists(path)
-            if file_exists:                
+            if file_exists:  
+                size = os.path.getsize(path)              
                 with open(path, 'rb') as file:
                     try:
                         if pre_process is None:
@@ -165,13 +180,16 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
                             out =  pre_process(pickle.load(file), **kw_pre)
 
                         if verbose:
-                            print(f'loaded[{i}][{j}]: {path}  ({os.path.getsize(path)/(1024*1024)} mb)')
+                            print(f'loaded[{i}][{j}]: {path}  ({size/(1024*1024)} mb)')
                         
                         result =  out
-                    except:
+                    except Exception as e:
+                        
                         if verbose:
-                            print(f'exception loading/processing: {path}  ({os.path.getsize(path)/(1024*1024)} mb)')
+                            #print(f'exception loading/processing: {path}  ({size/(1024*1024)} mb)')
+                            print(f'rm {path}  ')
                         result = None
+                        raise e
 
             else:
                 # print(f'inpainting[{i}][{j}]:')
@@ -205,12 +223,24 @@ def sweep(*args, kw={}, savepath_prefix='.', extension='.pickle', overwrite=Fals
         for k in inpaint_ij:
             results_raveled[k] = inpaint
 
-    types=set([type(r) for r in results_raveled])
-    is_scalar = [(not hasattr(r,'shape') ) or r.size==1 for r in results_raveled]
+    if dtype is None:
+        types=set([type(r) for r in results_raveled])
+        is_scalar = [(not hasattr(r,'shape') ) or r.size==1 for r in results_raveled]
+        if np.all(is_scalar) and equivalent_classes(types):
+            dtype = first_item(types)
+    
     try:
-        if np.all(is_scalar):
-            results=np.array(results, dtype = first_item(types))
+        if dtype is not None:
+            results=np.array(results, dtype = dtype )
+
+        if isinstance(kw0, dict) and expand_kw:
+            results = results.reshape(*[*args_nd_shape(*par0),*dict_product_nd_shape(kw0)])
     except:
         pass
     
     return results
+
+
+def equivalent_classes(types):
+    types=tuple(types)
+    return np.all([issubclass(t,types[0]) for t in types])

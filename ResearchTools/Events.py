@@ -24,16 +24,37 @@ def TimeBasedEventExecutor(events):
 
         return len(fired)>0
 
+    def sort():
+        nonlocal events
+        events=list(sorted(events, key=lambda x:x[0]))
 
+    def append(x):
+        events.append(x)
+        sort()
+
+    def extend(x):
+        events.extend(x)
+        sort()
+        
     out = wait_and_execute
-    out.append = events.append
-    out.extend = events.extend
+    out.append = append
+    out.extend = extend
     out.events = events
 
     return out
 
 
+def CreatePeriodicEvent(func, period, Executor, t=0):
 
+    from VertexTissue.Memoization import get_caller_locals
+
+    def exec_and_queue(*args):
+        t_prev=get_caller_locals()['evt'][0]
+        func(*args)
+        Executor.append((t_prev+period, exec_and_queue))
+        
+
+    Executor.append((t, exec_and_queue))
 
 def EventListenerPair():
 
