@@ -13,7 +13,7 @@ from .Dict import hash384, dict_product, dict_product_nd_shape
 from .Caching import cache_file, function_savedir,  signature_lists, signature_string
 
 def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle', overwrite=False, 
-            pool=None, pre_process=None, pre_process_kw={}, pass_kw=False,
+            pool=None, pre_process=None, pre_process_kw={}, pass_kw=False, dry_run=False, print_code=False,
             inpaint=None, cache=False, refresh=False, verbose=True, dtype=None):
     """
     Perform a sweep of a function over all parameter and keyword combinations, or retrieve corresponding results from local storage.
@@ -102,6 +102,8 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
     if pool is None:
         core_count = psutil.cpu_count(logical=False)
         pool = Pool(nodes=core_count-1)
+        if print_code:
+            code_string = f"from pathos.multiprocessing import ProcessPool\npool = ProcessPool(nodes={core_count-1})\n"
 
       
     #setup a graceful exit
@@ -112,7 +114,11 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
     par_names, _ = signature_lists(func)
 
     savepaths = multiprocessing.Manager().dict()
+    func_name = func.__name__
 
+    if print_code:
+        pathos_args_sequence = multiprocessing.Manager().list()
+    
     def check_filesystem_and_run(k):
 
         i, j = np.unravel_index(k, shape)
@@ -130,7 +136,20 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
         run = inpaint is None and (overwrite or missing_file)
 
         if run:
-            result = func(*pars, **kw[j])
+            if verbose:
+                kw_str=", ".join([ str(k) + "=" + str(v) for k,v in kw[j].items()])
+                pars_str = ", ".join([str(p)  for p in pars])
+                print(f"running: {func_name}({pars_str}, {kw_str})")
+                # print(f"pool.apipe({func_name},{pars_str}, {kw_str})")
+
+            if print_code:
+                pathos_args_sequence.append(f'({pars},{kw[j]}),')
+
+            if not dry_run:
+                result = func(*pars, **kw[j])
+            else:
+                result=None
+
             #save the result for later, if that makes sense
             if result is not None and not os.path.exists(path):
                 if  not os.path.exists(basedir):
@@ -143,6 +162,8 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
 
         return result
 
+
+
     to_check = np.where(results_raveled == None)[0]
 
     possibly_new_results = len(to_check) > 0
@@ -151,6 +172,11 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
 
 
     results_raveled[to_check] = pool.map(check_filesystem_and_run, to_check)
+
+    if print_code:
+        code_string+=f"pool.map(lambda args_and_kws: {func_name}(*args_and_kws[0], **args_and_kws[1]),(\n"+"\n".join(pathos_args_sequence)+"\n))"
+        print(code_string)
+
 
     # signal.pthread_sigmask(signal.SIG_UNBLOCK,[signal.SIGINT])
 
@@ -171,17 +197,20 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
                 size = os.path.getsize(path)              
                 with open(path, 'rb') as file:
                     try:
-                        if pre_process is None:
-                            out = pickle.load(file)
-                        else:
-                            if pass_kw:
-                                kw_pre={**pre_process_kw0, **kw[j]}
+                        if not dry_run:
+                            if pre_process is None:
+                                out = pickle.load(file)
+                            else:
+                                if pass_kw:
+                                    kw_pre={**pre_process_kw0, **kw[j]}
 
-                            out =  pre_process(pickle.load(file), **kw_pre)
+                                out =  pre_process(pickle.load(file), **kw_pre)
+                        else:
+                            out=None
 
                         if verbose:
                             print(f'loaded[{i}][{j}]: {path}  ({size/(1024*1024)} mb)')
-                        
+
                         result =  out
                     except Exception as e:
                         
@@ -209,6 +238,7 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
         pool = ThreadPool(nodes=psutil.cpu_count()-1) #revert to simple if we just have threading for IO-bound stuff
         
     needed = np.where(results_raveled==None)[0] 
+
     results_raveled[needed] = pool.map(loader, needed) #multiprocessing for CPU-bound stuff
 
 
