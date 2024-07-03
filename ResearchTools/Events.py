@@ -1,3 +1,8 @@
+'''
+Provides a `TimeBasedEventExecutor` that can be iterativley updated with the current 'time'.
+If any events should have taken place between the last given time and the current time, they will be trigegred.
+'''
+
 def TimeBasedEventExecutor(events):
     '''Execute events after specific "times" have passed.
 
@@ -7,7 +12,11 @@ def TimeBasedEventExecutor(events):
 
     Returns:
         wait_and_excute: Function that can be called with signature wait_and_execute(t, *args), where `t` is the current "time" and `*args` are any argument
-            to be passed to the event function. This function also have `extend` and `append` methods that allow for the event list to be grown.
+            to be passed to the event function. This function also has `extend` and `append` methods that allow for the event list to be grown using the same
+            syntax as lists.
+
+    ToDo:
+        Add method to specify the time until the next event.
 
     '''
     def wait_and_execute(t, *args):
@@ -45,8 +54,12 @@ def TimeBasedEventExecutor(events):
 
 
 def CreatePeriodicEvent(func, period, Executor, t=0):
+    '''
+    Creates a periodic event for the exection of `func` with period `period` to an existing TimeBasedEventExecutor `Executor`.
+    The first time this event is fired is at time `t` (0 by default)
+    '''
 
-    from VertexTissue.Memoization import get_caller_locals
+    from Caching import get_caller_locals
 
     def exec_and_queue(*args):
         t_prev=get_caller_locals()['evt'][0]

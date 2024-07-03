@@ -11,10 +11,8 @@
 
 
 from numba import jit
-import math
 
 from scipy.spatial import ConvexHull
-from scipy.spatial import Delaunay
 import numpy as np
 
 
@@ -22,9 +20,7 @@ import numpy as np
 @jit(nopython=True, cache=True, inline='always')
 def euclidean_distance(A, B):
     #Euclidean distance from point A to B
-
-    # dist = [(a - b)**2 for a, b in zip(A, B)]
-    # dist = math.sqrt(sum(dist))
+    
     d=B-A
     return np.sqrt(np.sum(d*d))
 

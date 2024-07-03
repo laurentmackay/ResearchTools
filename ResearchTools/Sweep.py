@@ -1,3 +1,9 @@
+'''
+Module for sweeping over the 'parameter space' of a function, where parameters may be simple arguments or keywords.
+
+Local caching functionality is also provided, very useful for functions that are very slow to exectue.
+'''
+
 import os, pickle, multiprocessing, psutil
 from collections.abc import Iterable
 from itertools import product
@@ -15,21 +21,22 @@ from .Caching import cache_file, function_savedir,  signature_lists, signature_s
 def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle', overwrite=False, 
             pool=None, pre_process=None, pre_process_kw={}, pass_kw=False, dry_run=False, print_code=False,
             inpaint=None, cache=False, refresh=False, verbose=True, dtype=None):
-    """
+    '''
     Perform a sweep of a function over all parameter and keyword combinations, or retrieve corresponding results from local storage.
 
     Args:
-        *args (function or Iterable): The function(s) and the Iterable(s) containing parameters that the function(s) are evaluated with. 
-            If multiple parameter iterables are given, they will be expanded into a single Iterable using itertools.product. Any results
-            that are not saved to storage by the function will be automatically saved.
+        *args (function or Iterable): The function(s) and the Iterable(s) containing parameters that the function(s) are to be evaluated with. 
+            Functions and parameter Iterables can be passed in any order. If multiple parameter iterables are given, they will be expanded 
+            into a single Iterable using itertools.product. Any non-None results may automatically be saved to storage (see the `savepath_prefix` and `cache` keywords).
             
-        kw (dict or Iterable): Keyword dict(s) to be fed into the function(s). If a dict is given, all keys must be strings. 
+        kw (dict or Iterable): Keyword dict(s) to be passed to the function(s). If a dict is given, all keys must be strings. 
             If an Iterable is given, all its members must be keyword dicts.
 
-        inpaint (Any): If not None, do not evaluate any function(s), but replace any missing results with `inpaint`. 
-            Default is None.
+        expand_kw (bool): Controls whether the Iterables in a kw dict is expanded using 'Dict.product' to produce an ND-grid of
+            keyword dicts are all to be passed to the function                    
 
-        savepath_prefix (str): The base path where results are to be saved/loaded. Default is the present working directory '.'.  
+        savepath_prefix (str): The base path where results are to be saved/loaded. Default is the present working directory '.'.
+            The actual cache subdirectory for any function "f" is specified by `Caching.function_savedir(f)`.
 
         extension (str): The file extension for the serialized results. Default is '.pickle'.
 
@@ -39,7 +46,20 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
             then a mulitprocessing pool with n-1 nodes is created, where n is the number of physical cores on the machine.
 
         pre_process (function): A function for pre-processing results after function execution or loading from storage.
-            Default is None.
+            Default is None. Results are also cached in subdirectories of ".cache" specified by `Caching.function_savedir(pre_process)`.
+
+        pre_process_kw (keyword dict): Keywords to pass to the `pre_process` function. Results are also cached in 
+
+        pass_kw (bool): Option for passing the keywords from `kw` to the `pre_process` function, these overwrite any
+            keywords that might be in `pre_process_kw` in the case of a collision. Default is False.
+
+        dry_run (bool): Do not make any function calls or load results from cache. If `verbose` is true, messages declaring what 
+            `sweep` would do will be printed. Default is False.
+
+        print_code (bool): Prints code for running the functions in a ProcessPool. Default is False.
+
+        inpaint (Any): If not None, do not evaluate any function(s), but replace any results that are missing from the cache
+            with `inpaint`. Default is None.
 
         cache (bool): If pre_process is not None, the processed results are stored in a local cache for rapid later retrieval.
              Default is False.
@@ -47,15 +67,20 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
         refresh (bool): If pre_process is not None and cache is True, ignore the current cache and overwrite it after processing. 
             Default is False.
         
-        verbose (bool): Controls whether a message is printed when files are loaded
+        verbose (bool): Controls whether a message is printed when files are loaded. Default is True.
 
-    """
+        dtype (type): a dtype that results should be cast to using `np.array()`.
+
+    returns: np.array(s) with dimensions [*Iterable.args_nd_shape(*pars),*Dict.dict_product_nd_shape(kw)] where pars are the parameter arguments
+            passed to the functions(s) and `kw` is the keyword dictionary.
+
+    '''
     def get_callables(*args):
-        """Get all the functions that were passed"""
+        '''Get all the functions that were passed'''
         return [a for a in args if callable(a)]
 
     def get_iterables(*args):
-        """Get all the Iterables that were passed"""
+        '''Get all the Iterables that were passed'''
         return [a for a in args if isinstance(a, Iterable)]
 
     func = get_callables(*args)
@@ -256,7 +281,7 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
     if dtype is None:
         types=set([type(r) for r in results_raveled])
         is_scalar = [(not hasattr(r,'shape') ) or r.size==1 for r in results_raveled]
-        if np.all(is_scalar) and equivalent_classes(types):
+        if np.all(is_scalar) and _equivalent_classes(types):
             dtype = first_item(types)
     
     try:
@@ -271,6 +296,7 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
     return results
 
 
-def equivalent_classes(types):
+def _equivalent_classes(types):
+    '''checks if the types are all equivalent to the first type (i.e., subclasses of the first type)'''
     types=tuple(types)
     return np.all([issubclass(t,types[0]) for t in types])

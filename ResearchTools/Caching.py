@@ -1,9 +1,17 @@
+'''
+This module provides tools for caching the results of function calls.
+Currently, it is primarily intended for use by the Sweep module.
+
+ToDo:
+Implement a straighforward memoization decorator for functions which acts a simple interface for sweep.
+'''
 import inspect, os, pickle, sys
 
 from .Filesystem import filename_without_extension
 from .Dict import hash384
 
 def get_caller():
+    '''get the function which called the current function'''
 
     stack = inspect.stack(context=0)
     caller = stack[2]
@@ -12,13 +20,15 @@ def get_caller():
 
 
 def get_caller_locals():
+    '''get the locals dict of the function that called the current function'''
 
     stack = inspect.stack(context=0)
     caller = stack[2]
 
     return caller.frame.f_locals
 
-def code_filename():
+def caller_filename():
+    '''get the name of the file that houses the function which called the current function'''
     f =  get_caller().__code__.co_filename
     return filename_without_extension(f)
 
@@ -180,4 +190,5 @@ def cached_call(_ , *arg,   cache_dir='.', **kw):
 
 
 def script_name():
+    '''get the filename of the script that this function is called from, only works if the file is run as a script'''
     return filename_without_extension(sys.argv[0])

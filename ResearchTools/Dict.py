@@ -1,3 +1,7 @@
+'''
+Module with a number of convenience functions for native Python dictionaries.
+'''
+
 import hashlib
 from itertools import product
 from collections.abc import Iterable
@@ -44,7 +48,13 @@ def dict_mask(dict_list, filter):
     return [len([None for k in keys if k in d.keys()])==N_keys and len([None for k in keys if d[k]==filter[k]])==N_keys for d in dict_list  ]
 
 def hash384(obj, pre_hash=None):
-    """sha384 hash of an object"""
+    '''
+    sha384 hash of an object.
+    
+    This has been placed in the Dict module since dicts are the only builtin python types that cannot be directly hashed.
+
+    ToDo: Consider if this is really appropriate location, maybe caching is better?
+    '''
     dhash = hashlib.sha384()
     # We need to sort arguments so {'a': 1, 'b': 2} is
     # the same as {'b': 2, 'a': 1}
@@ -74,16 +84,19 @@ def hash384(obj, pre_hash=None):
     return dhash.hexdigest()
 
 def last_dict_key(d):
+    '''returns the 'last' key in a dictionary key iterator, usually the most recently inserted key (not guranteed for all implementations) '''
     return next(reversed(d.keys()))
 
 def last_dict_value(d):
+    '''returns the last value in the dictionary. see `last_dict_key`'''
     return d[last_dict_key(d)]
 
 def keys(d):
+    '''returns a np.array of all the keys in the dictionary'''
     return np.array([ k for k in d.keys() ])
 
 def closest_dict_value(d, key):
-    ''' find closest match with the provided key'''
+    ''' find closest match to the provided key, only suitable for dictionaries with numerical keys'''
     d_keys = keys(d)
     imin  = np.argmin(np.abs(d_keys-key))
     closest = d_keys[imin]

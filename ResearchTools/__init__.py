@@ -1,3 +1,3 @@
-"""A package for various tools that can be useful in scientific research projects."""
+'''A package for generic tools that may be useful in scientific research projects. Python 3.10+'''
 
 __version__ = "0.0.1"

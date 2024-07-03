@@ -1,3 +1,7 @@
+'''
+Extends the base python mulitprocessing module to work more consistently across platforms.
+In Windows, this means we use the dill library to pickle the functions.
+'''
 import sys
 import multiprocessing
 
