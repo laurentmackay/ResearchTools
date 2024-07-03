@@ -8,5 +8,4 @@ authors = [{name = "Laurent MacKay", email = "laurent.mackay@gmail.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
-dynamic = ["description"]
-version = "0.0.2"
+dynamic = ["version","description"]
