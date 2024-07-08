@@ -62,3 +62,8 @@ def get_oldestfile(pattern, path=os.getcwd()):
 
 def filename_without_extension(path):
     return os.path.splitext(os.path.basename(path))[0]
+
+def ensure_directory_exists(path):
+    dir=os.path.dirname(path)
+    if not os.path.exists(dir):
+        os.makedirs(dir)

@@ -17,6 +17,7 @@ import numpy as np
 from .Iterable import args_nd_shape, first_item
 from .Dict import hash384, dict_product, dict_product_nd_shape
 from .Caching import cache_file, function_savedir,  signature_lists, signature_string
+from .Filesystem import ensure_directory_exists
 
 def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle', overwrite=False, 
             pool=None, pre_process=None, pre_process_kw={}, pass_kw=False, dry_run=False, print_code=False,
@@ -118,6 +119,8 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
             if (not (refresh or overwrite)) and os.path.exists(cache):
                     with open(cache, 'rb') as file:
                         results = pickle.load(file)
+            else:
+                ensure_directory_exists(cache)
 
 
 
@@ -242,6 +245,7 @@ def sweep(*args, kw={}, expand_kw=True, savepath_prefix='.', extension='.pickle'
                         if verbose:
                             #print(f'exception loading/processing: {path}  ({size/(1024*1024)} mb)')
                             print(f'rm {path}  ')
+                            print(e)
                         result = None
                         raise e
 
