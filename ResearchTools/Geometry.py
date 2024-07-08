@@ -26,7 +26,7 @@ def euclidean_distance(A, B):
 
 @jit(nopython=True, cache=True, inline='always')
 def unit_vector(A,B):
-    # Calculate the unit vector from A to B
+    '''Calculate the unit vector pointing from A to B'''
 
     dist = euclidean_distance(A,B)
 

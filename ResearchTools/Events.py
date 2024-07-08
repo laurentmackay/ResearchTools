@@ -1,6 +1,15 @@
 '''
-Provides a `TimeBasedEventExecutor` that can be iterativley updated with the current 'time'.
-If any events should have taken place between the last given time and the current time, they will be trigegred.
+Provides a `TimeBasedEventExecutor` that can be iterativley updated with the current "time".
+
+If any "events" should have taken place between the last given time and the current time, they will be triggered.
+
+Events are specified as 2- or 3-tuples. 
+    - The first item in each tuple is the time when the event takes place.
+    - The second is a function to call when the event is triggered,
+    - The third item (optional) is a message string to be printed after the event function is executed.
+
+ToDo:
+    Get rid of any instances of 3-tuples, message printing should just be done in the event functions...(looking at you VertexTissue.SG)
 '''
 
 def TimeBasedEventExecutor(events):
@@ -12,11 +21,11 @@ def TimeBasedEventExecutor(events):
 
     Returns:
         wait_and_excute: Function that can be called with signature wait_and_execute(t, *args), where `t` is the current "time" and `*args` are any argument
-            to be passed to the event function. This function also has `extend` and `append` methods that allow for the event list to be grown using the same
+            to be passed to the event function(s). This function also has `extend` and `append` methods that allow for the event list to be grown using the same
             syntax as lists.
 
     ToDo:
-        Add method to specify the time until the next event.
+        Add method to query the time until the next event.
 
     '''
     def wait_and_execute(t, *args):
